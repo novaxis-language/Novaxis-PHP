@@ -46,7 +46,7 @@ For comprehensive information on Novaxis's syntax, features, and usage, refer to
 ```PHP
 <?php
 require_once "vendor/autoload.php";
-use NOVAXIS\Core\Runner;
+use Novaxis\Core\Runner;
 
 $novaxis = new Runner("test.novaxis");
 $execute = $novaxis -> execute();

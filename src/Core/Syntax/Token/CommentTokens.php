@@ -7,18 +7,18 @@ namespace Novaxis\Core\Syntax\Token;
  * This trait contains constants for comment tokens used in the syntax.
  */
 trait CommentTokens {
-    /**
-     * The single-line comment tokens.
-     */
-    const COMMENT_DECLARE = ['#', '//'];
+	/**
+	 * The single-line comment tokens.
+	 */
+	const COMMENT_DECLARE = ['#', '//'];
 
-    /**
-     * The multi-line comment open token.
-     */
-    const MULTI_LINES_COMMENT_OPEN = ['/*'];
+	/**
+	 * The multi-line comment open token.
+	 */
+	const MULTI_LINES_COMMENT_OPEN = ['/*'];
 
-    /**
-     * The multi-line comment close token.
-     */
-    const MULTI_LINES_COMMENT_CLOSE = ['*/'];
+	/**
+	 * The multi-line comment close token.
+	 */
+	const MULTI_LINES_COMMENT_CLOSE = ['*/'];
 }

@@ -14,7 +14,7 @@ class ClassHandler {
 	 *
 	 * @var string
 	 */
-	private $pattern = '/^\s*([^=\s:->]+)\s*(?:\?\s*([^=:\n]*?(?:\([^)]*\))?(?:\s+[^=:\n]*?(?:\([^)]*\))?)*))?\s*(?:->\s*\d+)?\s*$/';
+	private $pattern = '/^\s*([^=\s:->]+)\s*(?:\?\s*([^=:\n]*?(?:\([^)]*\))?(?:\s+[^=:\n]*?(?:\([^)]*\))?)*))?\s*(?:->\s*(\d+|(\{(\w|\W){0,}\})))?\s*$/';
 
 	/**
 	 * Instance of the Namingrules class for validating naming rules.
@@ -36,10 +36,8 @@ class ClassHandler {
      * @param string $input The input to check.
      * @return bool True if the input represents a class declaration, false otherwise.
      */
-	function isClass($input) {
-		$pattern = '/^\s*([^=\s:->]+)\s*(?:\?\s*([^=:\n]*?(?:\([^)]*\))?(?:\s+[^=:\n]*?(?:\([^)]*\))?)*))?\s*(?:->\s*\d+)?\s*$/';
-	
-		return preg_match($pattern, $input);
+	public function isClass($input) {
+		return preg_match($this -> pattern, $input);
 	}
 
 	/**
@@ -74,7 +72,7 @@ class ClassHandler {
 	 * @return string|null The name of the class, or null if not found.
 	 * @throws 'NamingRuleException' If the extracted class name is invalid according to naming rules.
 	 */
-	function getClassName($input) {
+	public function getClassName($input) {
 		if (preg_match($this -> pattern, $input, $matches)) {
 			$this -> Namingrules -> isValid($matches[1], true);
 			
@@ -90,7 +88,7 @@ class ClassHandler {
      * @param string $input The input to extract the class datatype from.
      * @return string|null The datatype of the class, or null if not found.
      */
-	function getClassDatatype($input) {
+	public function getClassDatatype($input) {
 		if (preg_match($this -> pattern, $input, $matches)) {
 			return $matches[2] ?? null;
 		}
@@ -101,14 +99,29 @@ class ClassHandler {
 	/**
 	 * Get the maximum number from the given syntax.
 	 *
-	 * @param string $syntax The syntax string to extract the maximum number from.
+	 * @param string $line The line string to extract the maximum number from.
 	 * @return string The extracted maximum number or an empty string if not found.
 	 */
-	function getMaximumNumber(string $syntax): string {
-		$pattern = '/\s*->\s*(\d+)\s*$/';
-
-		preg_match($pattern, $syntax, $matches);
-
+	public function getMaximumNumber(string $line): string {
+		$pattern = '/\s*->\s*(\d+|(\{(\w|\W){0,}\}))\s*$/';
+		preg_match($pattern, $line, $matches);
+		
 		return isset($matches[1]) ? $matches[1] : '';
 	}
+	
+	/**
+	 * Check if the given syntax contains a maximum number definition.
+	 *
+	 * This function checks if the provided line of syntax contains a maximum number definition.
+	 *
+	 * @param string $line The line string to check for a maximum number definition.
+	 * @return bool True if a maximum number is found, false otherwise.
+	 */
+	public function hasMaximumNumber(string $line): bool {
+		$pattern = '/\s*->\s*(\d+|(\{(\w|\W){0,}\}))\s*$/';
+		
+		return preg_match($pattern, $line);
+	}
+
+	public function cases() {}
 }

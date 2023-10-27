@@ -1,6 +1,7 @@
 <?php
 namespace Novaxis\Core\Syntax\Datatype;
 
+use Novaxis\Core\Syntax\Datatype\NumberType;
 use Novaxis\Core\Error\ConversionErrorException;
 use Novaxis\Core\Syntax\Datatype\TypesInterface;
 
@@ -16,16 +17,47 @@ class ByteType implements TypesInterface {
 	public $dataTypeName = 'Byte';
 
 	/**
-     * @var mixed $value The value of the Byte.
-     */
+	 * Multipliers for converting different byte units to bytes.
+	 *
+	 * This array contains multipliers for various byte units (e.g., KB, MB, GB) to convert them to bytes. The keys represent the unit, and the values represent the corresponding multipliers for the conversion.
+	 *
+	 * @var array
+	 */
+	public $multipliers = [
+		'B' => 1,
+		'KB' => 1024,
+		'MB' => 1024 * 1024,
+		'GB' => 1024 * 1024 * 1024,
+		'TB' => 1024 * 1024 * 1024 * 1024,
+		'PB' => 1024 * 1024 * 1024 * 1024 * 1024,
+		'EB' => 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
+		'ZB' => 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
+		'YB' => 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
+	];
+
+	/**
+	 * @var mixed $value The value of the Byte.
+	 */
 	private $value;
 
 	/**
-     * Set the value of the Byte.
-     *
-     * @param mixed $value The value of the Byte.
-     * @return $this
-     */
+	 * @var $NumberType The number type.
+	 */
+	private NumberType $NumberType;
+
+	/**
+	 * The constructor for the ByteType class.
+	 */
+	public function __construct() {
+		$this -> NumberType = new NumberType;
+	}
+
+	/**
+	 * Set the value of the Byte.
+	 *
+	 * @param mixed $value The value of the Byte.
+	 * @return $this
+	 */
 	public function setValue($value) {
 		$this -> value = $value;
 
@@ -33,133 +65,139 @@ class ByteType implements TypesInterface {
 	}
 
 	/**
-     * Get the value of the Byte.
-     *
-     * @return mixed The value of the Byte.
-     */
+	 * Get the value of the Byte.
+	 *
+	 * @return mixed The value of the Byte.
+	 */
 	public function getValue() {
 		return $this -> value;
 	}
 
 	/**
-     * Check if the value is valid for Byte conversion.
-     *
-     * @return bool True if the value is valid, false otherwise.
-     */
+	 * Check if the value is valid for ByteType conversion.
+	 *
+	 * @return bool True if the value is valid, false otherwise.
+	 */
 	public function is() {
-		return (
+		return preg_match("/^(((\d+(\.\d+)?)([YZEPTGMKBp]*)|0x[0-9A-Fa-f]+|0b[01]+)(\W|\s){0,}?){0,}$/", $this -> value);
+		/* return (
 			$this -> isValidBinValue($this -> value)
 			|| $this -> isValidByteValue($this -> value)
 			|| $this -> isValidHexValue($this -> value)
-		);
+		); */
 	}
 
 	/**
-     * Convert the value to the appropriate format.
-     *
-     * @throws ConversionErrorException If the value is not valid.
-     * @return ByteType This instance with the converted value.
-     */
+	 * Convert the value to the appropriate format.
+	 *
+	 * @return ByteType This instance with the converted value.
+	 * @throws ConversionErrorException If the value is not valid.
+	 */
 	public function convertTo() {
 		if (!$this -> is()) {
 			throw new ConversionErrorException;
 		}
 
-		if ($this -> isValidByteValue($this -> value)) {
-			$this -> value = $this -> parseByteValue($this -> value);
-		} else if ($this->isValidHexValue($this -> value)) {
-			$this -> value = $this -> parseHexValue($this -> value);
-		} else if ($this->isValidBinValue($this -> value)) {
-			$this -> value = $this -> parseBinValue($this -> value);
+		$this -> value = $this -> parseByteValue($this -> value);
+		$this -> value = $this -> parseHexValue($this -> value);
+		$this -> value = $this -> parseBinValue($this -> value);
+		// if ($this -> isValidByteValue($this -> value)) {}
+		// if ($this -> isValidHexValue($this -> value)) {}
+		// if ($this -> isValidBinValue($this -> value)) {}
+
+		if ($this -> NumberType -> isMathematicalOperation($this -> value)) {
+			$this -> value = $this -> NumberType -> calculateResult($this -> value);
 		}
 
 		return $this;
 	}
 
 	/**
-     * Check if the value is valid for Byte conversion.
-     *
-     * @param mixed $value The value to check.
-     * @return bool True if the value is valid, false otherwise.
-     */
+	 * Check if the value is valid for Byte conversion.
+	 *
+	 * @param mixed $value The value to check.
+	 * @return bool True if the value is valid, false otherwise.
+	 */
 	private function isValidByteValue($value) {
-		return preg_match('/^\d+(\.\d+)?[YZEPTGMK]?[Bp]?$/i', $value);
+		return preg_match('/^((\d+(\.\d+)?)([YZEPTGMKBp]*)(\W|\s){0,}?){0,}$/i', $value);
 	}
 
 	/**
-     * Check if the value is a valid hexadecimal value.
-     *
-     * @param mixed $value The value to check.
-     * @return bool True if the value is valid, false otherwise.
-     */
+	 * Check if the value is a valid hexadecimal value.
+	 *
+	 * @param mixed $value The value to check.
+	 * @return bool True if the value is valid, false otherwise.
+	 */
 	private function isValidHexValue($value) {
-		return preg_match('/^0x[0-9A-Fa-f]+$/', $value);
+		return preg_match('/^(0x[0-9A-Fa-f]+(\W|\s){0,}?){0,}$/', $value);
 	}
 	
 	/**
-     * Check if the value is a valid binary value.
-     *
-     * @param mixed $value The value to check.
-     * @return bool True if the value is valid, false otherwise.
-     */
+	 * Check if the value is a valid binary value.
+	 *
+	 * @param mixed $value The value to check.
+	 * @return bool True if the value is valid, false otherwise.
+	 */
 	private function isValidBinValue($value) {
-		return preg_match('/^0b[01]+$/', $value);
+		return preg_match('/^(0b[01]+(\W|\s){0,}?){0,}$/', $value);
 	}
 	
 	/**
-     * Parse a hexadecimal value to decimal.
-     *
-     * @param mixed $value The value to parse.
-     * @return int The parsed value.
-     */
+	 * Parse a hexadecimal value to decimal.
+	 *
+	 * @param mixed $value The value to parse.
+	 * @return string The parsed value.
+	 */
 	private function parseHexValue($value) {
-		return hexdec($value);
+		$value = preg_replace_callback('/0x[0-9A-Fa-f]+/', function ($matches) {
+			$hex = $matches[0];
+			$decimal = hexdec($hex);
+			return $decimal;
+		}, $value);
+
+		return $value;
 	}
 
 	/**
-     * Parse a binary value to decimal.
-     *
-     * @param mixed $value The value to parse.
-     * @return int The parsed value.
-     */
+	 * Parse a binary value to decimal.
+	 *
+	 * @param mixed $value The value to parse.
+	 * @return string The parsed value.
+	 */
 	private function parseBinValue($value) {
-		return bindec(substr($value, 2)); // Remove "0b" prefix before conversion
+		$value = preg_replace_callback('/0b[01]+/', function ($matches) {
+			$binary = $matches[0];
+			$decimal = bindec($binary);
+			return $decimal;
+		}, $value);
+
+		return $value;
 	}
 
 	/**
-     * Parse a byte value with units to bytes.
-     *
-     * @param mixed $value The value to parse.
-     * @return float|int The parsed value in bytes.
-     */
+	 * Parse a byte value with units to bytes.
+	 *
+	 * @param mixed $value The value to parse.
+	 * @return string The parsed value in bytes.
+	 */
 	private function parseByteValue($value) {
-		$multipliers = [
-			'B' => 1,
-			'KB' => 1024,
-			'MB' => 1024 * 1024,
-			'GB' => 1024 * 1024 * 1024,
-			'TB' => 1024 * 1024 * 1024 * 1024,
-			'PB' => 1024 * 1024 * 1024 * 1024 * 1024,
-			'EB' => 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
-			'ZB' => 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
-			'YB' => 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024 * 1024,
-		];
+		$value = preg_replace_callback('/(\d+(\.\d+)?)([YZEPTGMKBp]*)/i', function ($matches) {
+			$numericValue = floatval($matches[1]);
+			$unit = strtoupper($matches[3]);
+	
+			$decimal = null;
+			if (isset($this -> multipliers[$unit])) {
+				$decimal = $numericValue * $this -> multipliers[$unit];
+			}
+			$decimal = $decimal ?? $numericValue;
+	
+			if (str_contains($decimal, '.')) {
+				return (float) $decimal;
+			} else {
+				return (int) $decimal;
+			}
+		}, $value);
 
-		preg_match('/^(\d+(\.\d+)?)([YZEPTGMKBp]*)$/i', $value, $matches);
-
-		$numericValue = floatval($matches[1]);
-		$unit = strtoupper($matches[3]);
-
-		$value = null;
-		if (isset($multipliers[$unit])) {
-			$value = $numericValue * $multipliers[$unit];
-		}
-		$value = $value ?? $numericValue;
-
-		if (strpos($value, '.')) {
-            return (float) $value;
-		} else {
-			return (int) $value;
-		}
+		return $value;
 	}
 }

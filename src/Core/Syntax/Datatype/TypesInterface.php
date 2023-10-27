@@ -9,21 +9,21 @@ namespace Novaxis\Core\Syntax\Datatype;
  */
 interface TypesInterface {
 	/**
-      * Sets the input value for the datatype instance.
-      *
-      * @param mixed $input The input value.
-      */
+	* Sets the input value for the datatype instance.
+	*
+	* @param mixed $input The input value.
+	*/
 	public function setValue($input);
 
 	/**
-      * Gets the value of the datatype instance.
-      *
-      * @return mixed The value of the datatype instance.
-      */
+	* Gets the value of the datatype instance.
+	*
+	* @return mixed The value of the datatype instance.
+	*/
 	public function getValue();
 
 	/**
-      * Converts the current value to a proper datatype representation.
-      */
+	* Converts the current value to a proper datatype representation.
+	*/
 	public function convertTo();
 }

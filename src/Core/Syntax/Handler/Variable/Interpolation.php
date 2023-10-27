@@ -81,9 +81,9 @@ class Interpolation {
 	 * @param string $input The interpolated variable with braces.
 	 * @return string The interpolated variable without braces.
 	 */
-	public function removeBraces($input) {
-		return trim($input, '\\{}');
-	}
+		public function removeBraces($input) {
+			return trim($input, '\\{}');
+		}
 
 	/**
 	 * Replace interpolated variables in the input string with corresponding values from the given JSON data.
@@ -145,5 +145,23 @@ class Interpolation {
 		}
 
 		return $input;
+	}
+
+	/**
+	 * Execute variable interpolation in the given value.
+	 *
+	 * This function checks if variable interpolation is present in the provided value. If it is, it replaces the interpolated variables with their corresponding values.
+	 *
+	 * @param string $value The value string to check and perform interpolation on.
+	 * @param array $items An array of items representing variables and their values.
+	 * @param string $path The current path or context for interpolation.
+	 * @return string|false The interpolated value if interpolation is present, or false if there's no interpolation.
+	 */
+	public function execute(string $value, array $items, string $path) {
+		if ($this -> hasInterpolation($value)) {
+			return $this -> replaceValue($value, $items, $path);
+		}
+
+		return false;
 	}
 }

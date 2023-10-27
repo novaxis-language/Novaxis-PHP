@@ -80,7 +80,7 @@ class NumberType implements TypesInterface {
 		$expressionLanguage = new ExpressionLanguage();
 
 		try {
-			$result = $expressionLanguage -> evaluate(strtolower($input) ?? strtolower($this -> value));
+			$result = $expressionLanguage -> evaluate(strtolower($input ?? $this -> value));
 		} catch (\Exception $e) {
 			return false;
 		}
@@ -123,11 +123,13 @@ class NumberType implements TypesInterface {
 	 * @throws ConversionErrorException If the current value is not a valid number representation.
 	 */
 	public function convertTo() {
-		if ($this -> isMathematicalOperation())
+		if ($this -> isMathematicalOperation()) {
 			$this -> value = $this -> calculateResult();
-		if (!$this -> is())
+		}
+		if (!$this -> is()) {
 			throw new ConversionErrorException;
-		
+		}
+
 		if (strpos($this -> value, '.')) {
 			$this -> value = (float) $this -> value;
 		} else {

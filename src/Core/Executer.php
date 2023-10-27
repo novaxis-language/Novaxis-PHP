@@ -2,12 +2,19 @@
 namespace Novaxis\Core;
 
 use Novaxis\Core\Tabs;
-use Novaxis\Core\Syntax\Handler\ClassHandler;
-use Novaxis\Core\Syntax\Handler\CommentHandler;
-use Novaxis\Core\Syntax\Handler\DatatypeHandler;
-use Novaxis\Core\Syntax\Handler\VariableHandler;
+use Novaxis\Core\Syntax\Handler\{
+	ClassHandler,
+	CommentHandler,
+	DatatypeHandler,
+	VariableHandler,
+};
+use Novaxis\Core\Syntax\Handler\Variable\{
+	Interpolation,
+	ListMethod\Counter as listCounter
+};
+use Novaxis\Core\Error\NotAllowedException;
 use Novaxis\Core\Syntax\Datatype\InheritanceType;
-use Novaxis\Core\Syntax\Handler\Variable\Interpolation;
+use Novaxis\Core\Syntax\Handler\H_Class\MaximumElements;
 
 /**
  * Executes Novaxis code by handling syntax, data types, path, and inheritance for items, and others.
@@ -16,44 +23,71 @@ use Novaxis\Core\Syntax\Handler\Variable\Interpolation;
  */
 class Executer {
 	/**
-     * @var Tabs The Tabs instance for handling indentation levels.
-     */
+	 * @var Tabs The Tabs instance for handling indentation levels.
+	 */
 	private Tabs $Tabs;
 
 	/**
-     * @var Path The Path instance for managing the path and inheritance of items.
-     */
+	 * @var Path The Path instance for managing the path and inheritance of items.
+	 */
 	private Path $Path;
 
 	/**
-     * @var ClassHandler The ClassHandler instance for handling class-related syntax.
-     */
+	 * @var ClassHandler The ClassHandler instance for handling class-related syntax.
+	 */
 	private ClassHandler $ClassHandler;
+	
+	/**
+	 * @var CommentHandler The CommentHandler instance for handling comments in the code.
+	 */
+	private CommentHandler $CommentHandler;
 
 	/**
-     * @var DatatypeHandler The DatatypeHandler instance for managing data types.
-     */
+	 * @var DatatypeHandler The DatatypeHandler instance for managing data types.
+	 */
 	private DatatypeHandler $DatatypeHandler;
 
 	/**
-     * @var VariableHandler The VariableHandler instance for handling variable syntax.
-     */
+	 * @var VariableHandler The VariableHandler instance for handling variable syntax.
+	 */
 	private VariableHandler $VariableHandler;
 
 	/**
-     * @var InheritanceType The InheritanceType instance for managing inheritance.
-     */
+	 * @var InheritanceType The InheritanceType instance for managing inheritance.
+	 */
 	private InheritanceType $InheritanceType;
 
+	private listCounter $listCounter;
+
 	/**
-     * @var Interpolation The Interpolation instance for handling variable interpolation.
-     */
+	 * @var Interpolation The Interpolation instance for handling variable interpolation.
+	 */
 	private Interpolation $Interpolation;
 	
 	/**
-     * @var CommentHandler The CommentHandler instance for handling comments in the code.
-     */
-	private CommentHandler $CommentHandler;
+	 * @var MaximumElements The maximum number of elements allowed.
+	 */
+	private MaximumElements $MaximumElements;
+
+	/**
+	 * @var array The master array for list counter started status and name.
+	 */
+	private array $listCounterStartedMaster = ["started" => false, "name" => null];
+
+	/**
+	 * @var array The array for list counter started status and name.
+	 */
+	private array $listCounterStarted = ["started" => false, "name" => null];
+
+	/**
+	 * @var int The number of tabs in the list counter.
+	 */
+	private int $listCounterLineTabs = 0;
+
+	/**
+	 * @var bool Indicates whether the code was in list counter mode.
+	 */
+	private bool $wasInListCounter = false;
 
 	/**
 	 * Constructor for the Executer class.
@@ -68,7 +102,272 @@ class Executer {
 		$this -> DatatypeHandler = new DatatypeHandler;
 		$this -> VariableHandler = new VariableHandler;
 		$this -> InheritanceType = new InheritanceType;
+		$this -> listCounter = new listCounter;
 		$this -> Interpolation = new Interpolation;
+		$this -> MaximumElements = new MaximumElements;
+	}
+
+	/**
+	 * Checks if a given line of code contains unnecessary lines or comments.
+	 *
+	 * @param string|null $line The line of code to check for unnecessary lines.
+	 * @return bool Returns true if the line contains unnecessary lines.
+	 */
+	public function hasUnnecessaryLines(?string $line): bool {
+		if ($this -> CommentHandler -> is($line ?? '') or empty(trim($line ?? ''))) {
+			if ($this -> CommentHandler -> is($line)) {
+				if (empty(trim($this -> CommentHandler -> split($line)))) {
+					return true;
+				}
+			}
+
+			else if (empty(trim($line))) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Check if adding a new item is allowed based on maximum element limits.
+	 *
+	 * @param mixed $allVariableDetails All details of the new item to be added.
+	 * @throws NotAllowedException If adding a new item is not allowed due to maximum element limits.
+	 */
+	public function isAddingNewItemAllowed($allVariableDetails) {
+		if ($this -> MaximumElements -> allowed($this -> Path -> getFullPath())) {
+			$this -> Path -> addItem($allVariableDetails['name'], ucfirst($allVariableDetails['datatype']), $allVariableDetails['value'], $allVariableDetails['visibility']);
+			$this -> MaximumElements -> loseAChance($this -> Path -> getFullPath());
+		}
+		else {
+			throw new NotAllowedException;
+		}
+	}
+
+	/**
+	 * Process the current line for the list counter and update related settings.
+	 *
+	 * @param string $currentLine The current line of code to process.
+	 * @return array|null An array of items if the list counter has completed, null otherwise.
+	 */
+	public function executiveListCounter($currentLine) {
+		if ($this -> listCounterStarted['started'] == true) {
+			$this -> listCounter -> should($currentLine);
+			$this -> listCounter -> storage(trim($currentLine));
+	
+			if ($this -> listCounter -> able()) {
+				$value = $this -> listCounter -> getStorage();
+				$value = ($this -> Interpolation -> execute($value, $this -> Path -> getItems(), $this -> Path -> clean($this -> Path -> getFullPath()))) ?: $value;
+				
+				$this -> Path -> addItem($this -> listCounterStarted['name'], $this -> listCounterStarted['datatype'], $value, $this -> listCounterStarted['visibility']); // Continuous updating
+				
+				$this -> DatatypeHandler -> createDatatype('list', $value);
+				$value = $this -> DatatypeHandler -> getValue();
+				
+				$this -> listCounterStarted['value'] = $value;
+
+				$this -> isAddingNewItemAllowed($this -> listCounterStarted);
+				
+				$this -> wasInListCounter = true;
+				$this -> listCounterStarted = $this -> listCounterStartedMaster;
+
+				return $this -> Path -> getItems();
+			}
+			else {
+				return;
+			}
+		}
+	}
+
+	/**
+	 * Reset the settings related to the list counter.
+	 * 
+	 * @return $this
+	*/
+	public function resetListCounterSettings() {
+		$this -> listCounterLineTabs = 0;
+		$this -> wasInListCounter = false;
+
+		return $this;
+	}
+
+	/**
+	 * Process the current line for class-related data and update the Path accordingly.
+	 *
+	 * @param string $currentLine The current line of code to process.
+	 * @param array $values Additional values to assist in processing.
+	 * @return array|null An array of items if class handling is detected, null otherwise.
+	 */
+	public function executiveClass($currentLine, array $values) {
+		$forwardClassName = null;
+		$classDatatype = null;
+
+		if ($this -> ClassHandler -> isClass($currentLine)) {
+			$tabHandlingExecuteConnection = $this -> Tabs -> execute($this -> ClassHandler, $values["tabHandling"] ?? null, $values["previousLine"] ?? null, $currentLine, $values["nextLine"] ?? null, $values["firstline"] ?? null);
+			$forwardClassName = $tabHandlingExecuteConnection['forwardClassName'];
+			$classDatatype = $tabHandlingExecuteConnection['classDatatype'];
+			
+			if ($forwardClassName || $classDatatype) {
+				$this -> Path -> forward(trim($forwardClassName));
+				
+				if ($classDatatype) {
+					$this -> InheritanceType -> addItem($this -> Path -> getFullPath(), $classDatatype);
+				}
+			}
+			
+			if ($this -> ClassHandler -> hasMaximumNumber($currentLine)) {
+				$maximumValue = $this -> ClassHandler -> getMaximumNumber($currentLine);
+				$maximumValue = ($this -> Interpolation -> execute($maximumValue, $this -> Path -> getItems(), $this -> Path -> clean($this -> Path -> getFullPath()))) ?: $maximumValue;
+				
+				$this -> MaximumElements -> addItem($this -> Path -> getFullPath(), $maximumValue);
+			}
+			
+			return $this -> Path -> getItems();
+		}
+	}
+
+	/**
+	 * Check if a variable should inherit its datatype based on certain conditions.
+	 *
+	 * @param array $allVariableDetails Details of the variable to check.
+	 * @return mixed The inheritance datatype if applicable, null otherwise.
+	 */
+	public function isInheritanceDatatype($allVariableDetails) {
+		if ($allVariableDetails['datatype'] === null || empty($allVariableDetails['datatype'])) {
+			return $this -> InheritanceType -> getItem($this -> Path -> getFullPath());
+		}
+
+		return null;
+	}
+
+	/**
+	 * Start the list counter execution based on given line and variable details.
+	 *
+	 * @param string $currentLine The current line of code.
+	 * @param array $allVariableDetails Details of the variable.
+	 * @return bool False if the list counter execution started, true otherwise.
+	 */
+	public function listCounterStartExecute($currentLine, $allVariableDetails) {
+		if ($this -> listCounter -> is($allVariableDetails)) {
+			$this -> listCounterLineTabs = $this -> Tabs -> getTabCountInLine($currentLine);
+			$this -> listCounter -> should($allVariableDetails['value']);
+
+			if (!($this -> listCounter -> able())) {
+				$this -> listCounter -> storage($allVariableDetails['value']);
+				$this -> listCounterStarted = [
+					"started" => true,
+					"name" => $allVariableDetails['name'],
+					"datatype" => 'List',
+					"visibility" => $allVariableDetails['visibility']
+				];
+				
+				return false;
+			}
+
+			$this -> listCounterLineTabs = 0;
+		}
+
+		return true;
+	}
+
+	/**
+	 * Execute variable handling based on the given current line.
+	 *
+	 * @param string $currentLine The current line of code.
+	 * @return array|null The updated list of items, or null if no variable was found.
+	 */
+	public function executiveVariable($currentLine) {
+		if ($this -> VariableHandler -> isVariable($currentLine)) {
+			$allVariableDetails = $this -> VariableHandler -> getAllVariableDetails($currentLine);
+			
+			$allVariableDetails['value'] = $this -> CommentHandler -> is($allVariableDetails['value']) ? $this -> CommentHandler -> split($allVariableDetails['value']) : $allVariableDetails['value'];
+			$allVariableDetails['datatype'] = $this -> isInheritanceDatatype($allVariableDetails) ?: $allVariableDetails['datatype'];
+			
+			$allVariableDetails['value'] = ($this -> Interpolation -> execute($allVariableDetails['value'], $this -> Path -> getItems(), $this -> Path -> clean($this -> Path -> getFullPath()))) ?: $allVariableDetails['value'];
+			$allVariableDetails['datatype'] = $this -> DatatypeHandler -> datatypeInterpolation($allVariableDetails['datatype'], $this -> Path -> getItems(), $this -> Path -> getFullPath());
+			
+			if ($this -> listCounter -> is($allVariableDetails)) {
+				$this -> listCounterLineTabs = $this -> Tabs -> getTabCountInLine($currentLine);
+				$this -> listCounter -> should($allVariableDetails['value']);
+
+				if (!($this -> listCounter -> able())) {
+					$this -> listCounter -> storage($allVariableDetails['value']);
+					$this -> listCounterStarted = [
+						"started" => true,
+						"name" => $allVariableDetails['name'],
+						"datatype" => 'List',
+						"visibility" => $allVariableDetails['visibility']
+					];
+					
+					return;
+				}
+
+				$this -> listCounterLineTabs = 0;
+			}
+
+			if ($this -> listCounterStartExecute($currentLine, $allVariableDetails) === false) {
+				return;
+			}
+
+			$this -> DatatypeHandler -> createDatatype($allVariableDetails['datatype'], $allVariableDetails['value']);
+			$allVariableDetails['value'] = $this -> DatatypeHandler -> getValue();
+
+			if ($this -> DatatypeHandler -> getDatatype() === 'Auto') {
+				$autoValues = $this -> DatatypeHandler -> getDatatypeConnection() -> getItem();
+				
+				$allVariableDetails['datatype'] = $autoValues['datatype'];
+				$allVariableDetails['value'] = $autoValues['value'];
+			}
+			
+			$this -> isAddingNewItemAllowed($allVariableDetails);
+
+			return $this -> Path -> getItems();
+		}
+	}
+	
+	/**
+	 * Execute class box handling based on the given current line.
+	 *
+	 * @param string $currentLine The current line of code.
+	 * @return ?array The updated list of items.
+	 */
+	public function executiveClassbox($currentLine) {
+		if ($this -> ClassHandler -> isClassBox($currentLine)) {
+			$classBox = $this -> ClassHandler -> getClassBox($currentLine);
+			
+			$path = $this -> Path /* -> backward() */ -> getFullPath();
+			
+			if ($this -> InheritanceType -> isUnsetKeyword($classBox)) {
+				$this -> InheritanceType -> unset($path);
+			}
+			else {
+				$this -> InheritanceType -> addItem($path, $classBox);
+			}
+
+			return $this -> Path -> getItems();
+		}
+	}
+
+	/**
+	 * Execute various parts of code handling based on the given current line.
+	 *
+	 * @param string $currentLine The current line of code.
+	 * @param array|null $values Additional values for specific code parts.
+	 * @return array An associative array containing the results of executed code parts.
+	 */
+	public function executiveParts($currentLine, ?array $values = []) {
+		$return = [
+			"listCounter" => $this -> executiveListCounter($currentLine),
+			"variable" => $this -> executiveVariable($currentLine),
+			"classbox" => $this -> executiveClassbox($currentLine)
+		];
+		
+		if ($values) {
+			$return["class"] = $this -> executiveClass($currentLine, $values);
+		}
+
+		return $return;
 	}
 
 	/**
@@ -81,87 +380,36 @@ class Executer {
 	 * @return array|null An array containing the items created from the processed lines.
 	 */
 	public function parameter(?string $previousLine, ?string $currentLine, ?string $nextLine, $firstline = false) {
-		if (!trim($currentLine)) {
-			return $this -> Path -> getItems();
-		}
-
-		if ($this -> CommentHandler -> is($currentLine)) {
-			$currentLine = $this -> CommentHandler -> split($currentLine);
-			
-			if (!trim($currentLine)) {
-				return $this -> Path -> getItems();
-			}
-		}
-
-		$forwardClassName = null;
-		$classDatatype = null;
 		$tabHandling = $this -> Tabs -> handling($previousLine, $currentLine);
+		$currentLine = $this -> CommentHandler -> is($currentLine) ? $this -> CommentHandler -> split($currentLine) : $currentLine;
+
+		if ($this -> listCounterStarted['started'] == true) {
+			return $this -> executiveParts($currentLine)['listCounter'];
+		}
 		
-		if ($tabHandling == 'backward') {
-			$this -> Path -> backward($this -> Tabs -> getDifferenceNumber($previousLine, $currentLine));
+		if ($tabHandling == 'backward' || $this -> wasInListCounter === true) {
+			$this -> Path -> backward($this -> Tabs -> getDifferenceNumbers($this -> wasInListCounter === false ? $this -> Tabs -> getTabCountInLine($previousLine) : $this -> listCounterLineTabs, $this -> Tabs -> getTabCountInLine($currentLine)));
+			
+			if ($this -> wasInListCounter === true) {
+				$this -> resetListCounterSettings();
+			}
 		}
 
 		if ($this -> ClassHandler -> isClass($currentLine)) {
-			if (($tabHandling == 'forward' || $firstline) && $this -> Tabs -> handling($currentLine, $nextLine) == 'forward') {
-				$forwardClassName = $this -> ClassHandler -> getClassName($currentLine);
-				$classDatatype = $this -> ClassHandler -> getClassDatatype($currentLine);
-			} else if ($tabHandling == 'backward') {
-				$this -> Path -> backward($this -> Tabs -> getDifferenceNumber($previousLine, $currentLine));
-				
-				if ($this -> Tabs -> handling($currentLine, $nextLine) == 'forward') {
-					$forwardClassName = $this -> ClassHandler -> getClassName($currentLine);
-					$classDatatype = $this -> ClassHandler -> getClassDatatype($currentLine);
-				}
-
-			} else if ($tabHandling == 'nothing' && $this -> Tabs -> handling($currentLine, $nextLine) == 'forward') {
-				$forwardClassName = $this -> ClassHandler -> getClassName($currentLine);
-				$classDatatype = $this -> ClassHandler -> getClassDatatype($currentLine);
-			}
-			
-			if ($forwardClassName || $classDatatype) {
-				$this -> Path -> forward(trim($forwardClassName));
-				
-				if ($classDatatype) {
-					$this -> InheritanceType -> addItem($this -> Path -> getFullPath(), $classDatatype);
-				}
-			}
+			return $this -> executiveParts($currentLine, [
+				"tabHandling" => $tabHandling,
+				"previousLine" => $previousLine,
+				"nextLine" => $nextLine,
+				"firstLine" => $firstline
+			])['class'];
 		}
 		
-		else if ($this -> VariableHandler -> isVariable($currentLine)) {
-			$allVariableDetails = $this -> VariableHandler -> getAllVariableDetails($currentLine);
-			
-			if ($this -> CommentHandler -> is($allVariableDetails['value'])) {
-				$allVariableDetails['value'] = $this -> CommentHandler -> split($allVariableDetails['value']);
-			}
-
-			if ($allVariableDetails['datatype'] === null) {
-				$allVariableDetails['datatype'] = $this -> InheritanceType -> getItem($this -> Path -> getFullPath());
-			}
-			
-			if ($this -> Interpolation -> hasInterpolation($allVariableDetails['value'])) {
-				$allVariableDetails['value'] = $this -> Interpolation -> replaceValue($allVariableDetails['value'], $this -> Path -> getItems(), $this -> Path -> clean($this -> Path -> getFullPath()));
-			}
-
-			$allVariableDetails['datatype'] = $this -> DatatypeHandler -> datatypeInterpolation($allVariableDetails['datatype'], $this -> Path -> getItems(), $this -> Path -> getFullPath());
-			$this -> DatatypeHandler -> createDatatype($allVariableDetails['datatype'], $allVariableDetails['value']);
-			$allVariableDetails['value'] = $this -> DatatypeHandler -> getValue();
-			
-			if ($this -> DatatypeHandler -> getDatatype() === 'Auto') {
-				$autoValues = $this -> DatatypeHandler -> getDatatypeConnection() -> getItem();
-				
-				$allVariableDetails['datatype'] = $autoValues['datatype'];
-				$allVariableDetails['value'] = $autoValues['value'];
-			}
-			
-			$this -> Path -> addItem($allVariableDetails['name'], ucfirst($allVariableDetails['datatype']), $allVariableDetails['value'], $allVariableDetails['visibility']);
-
-			return $this -> Path -> getItems();
+		if ($this -> VariableHandler -> isVariable($currentLine)) {
+			return $this -> executiveParts($currentLine)['variable'];
 		}
 
-		else if ($this -> ClassHandler -> isClassBox($currentLine)) {
-			$classBox = $this -> ClassHandler -> getClassBox($currentLine);
-
-			$this -> InheritanceType -> addItem($this -> Path -> getFullPath(), $classBox);
+		if ($this -> ClassHandler -> isClassBox($currentLine)) {
+			return $this -> executiveParts($currentLine)['classbox'];
 		}
 	}
 }

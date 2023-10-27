@@ -25,7 +25,7 @@ class NullType implements TypesInterface {
     /**
      * @var null|string The value of the NullType instance.
      */
-    private null | string $value;
+    private ?string $value;
 
     /**
      * NullType constructor.
@@ -40,9 +40,13 @@ class NullType implements TypesInterface {
      * Sets the input value for the NullType instance.
      *
      * @param mixed $input The input value.
+     * 
+     * @return $this
      */
     public function setValue($input) {
         $this -> value = $input;
+
+        return $this;
     }
 
     /**

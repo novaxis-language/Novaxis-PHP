@@ -2,6 +2,7 @@
 namespace Novaxis\Core;
 
 use Novaxis\Core\Path;
+use Novaxis\Core\Syntax\Handler\ClassHandler;
 
 /**
  * The Tabs class handles tab-related operations and tracks indentation levels in code.
@@ -68,6 +69,19 @@ class Tabs {
 	}
 
 	/**
+	 * Get the difference in tab count between two lines.
+	 *
+	 * This function calculates the difference in the number of tabs between two input lines.
+	 *
+	 * @param string $previousLine The previous line.
+	 * @param string $currentLine The current line.
+	 * @return int The difference in the number of tabs between the two lines.
+	 */
+	public function getDifferenceNumbers(int $previousLine, int $currentLine) {
+		return $previousLine - $currentLine;
+	}
+
+	/**
 	 * Determine how to handle tab indentation between two lines.
 	 *
 	 * This function takes two input lines and determines how to handle tab indentation between them.
@@ -86,9 +100,45 @@ class Tabs {
 		else if ($previousLineTabs > $currentLineTabs) {
 			return 'backward';
 		}
-		
 		else if ($previousLineTabs == $currentLineTabs) {
 			return 'nothing';
 		}
+	}
+
+	/**
+	 * Execute the tab handling logic and retrieve class information.
+	 *
+	 * This function executes the tab handling logic based on input parameters and returns information about the class.
+	 *
+	 * @param ClassHandler $classHandler The ClassHandler instance for handling class-related syntax.
+	 * @param mixed $tabHandling The tab handling mode.
+	 * @param string $previousLine The previous line.
+	 * @param string $currentLine The current line.
+	 * @param string $nextLine The next line.
+	 * @param bool $firstline Indicates if it's the first line.
+	 * @return array An array containing class information:
+	 *   - 'forwardClassName': The class name in forward tab handling.
+	 *   - 'classDatatype': The class datatype.
+	 */
+	public function execute(ClassHandler $classHandler, $tabHandling, $previousLine, $currentLine, $nextLine, $firstline) {
+		if (($tabHandling == 'forward' || $firstline) && $this -> handling($currentLine, $nextLine) == 'forward') {
+			$forwardClassName = $classHandler -> getClassName($currentLine);
+			$classDatatype = $classHandler -> getClassDatatype($currentLine);
+		}
+		else if ($tabHandling == 'backward') {
+			if ($this -> handling($currentLine, $nextLine) == 'forward') {
+				$forwardClassName = $classHandler -> getClassName($currentLine);
+				$classDatatype = $classHandler -> getClassDatatype($currentLine);
+			}
+		}
+		else if ($tabHandling == 'nothing' && $this -> handling($currentLine, $nextLine) == 'forward') {
+			$forwardClassName = $classHandler -> getClassName($currentLine);
+			$classDatatype = $classHandler -> getClassDatatype($currentLine);
+		}
+
+		return [
+			'forwardClassName' => $forwardClassName,
+			'classDatatype' => $classDatatype
+		];
 	}
 }

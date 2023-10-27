@@ -112,19 +112,21 @@ class Path {
 	 * @return $this
 	 */
 	public function backward(int $count = 1) {
-		// Split the path into an array of path segments
+		if (!str_contains($this -> path, self::PATH_SEPARATOR)) {
+			// Moved
+		}
+		$this -> path = $this -> clean($this -> path);
+		$this -> path = self::PATH_SEPARATOR . $this -> path;
+		
 		$pathSegments = explode(self::PATH_SEPARATOR, $this -> path);
-
-		// Determine the number of segments to move backward
+		
 		$numSegments = count($pathSegments);
-		$numSteps = min($count, $numSegments - 1); // Limit to a valid range
-
-		// Remove the specified number of path segments from the end
+		$numSteps = min($count, $numSegments - 1);
+		
 		for ($i = 0; $i < $numSteps; $i++) {
 			array_pop($pathSegments);
 		}
-
-		// Reconstruct the path using the remaining segments
+		
 		$this -> path = $this -> clean(implode(self::PATH_SEPARATOR, $pathSegments));
 		
 		return $this;

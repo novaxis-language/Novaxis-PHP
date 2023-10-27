@@ -3,7 +3,6 @@ namespace Novaxis\Core\Syntax\Handler\Variable;
 
 use Novaxis\Core\Path;
 use Novaxis\Core\Syntax\Token\VariableTokens;
-use Novaxis\Core\Syntax\Handler\VariableHandler;
 
 /**
  * Manages variable visibility styles and accessibility.
@@ -35,18 +34,10 @@ class VisibilitySyntax {
 	private Path $Path;
 	
 	/**
-	 * Instance of the VariableHandler class for variable-related operations.
-	 *
-	 * @var VariableHandler
-	 */
-	private VariableHandler $VariableHandler;
-
-	/**
 	 * Constructor for the VisibilitySyntax class.
 	 */
 	public function __construct() {
 		$this -> Path = new Path;
-		$this -> VariableHandler = new VariableHandler;
 	}
 
 	/**
@@ -122,7 +113,7 @@ class VisibilitySyntax {
 	 * @param string $firstPath The first path to compare.
 	 * @param string $secondPath The second path to compare.
 	 * @param bool $final Indicates if the second path is final.
-	 * @return bool True if the variable fits between paths, false otherwise.
+	 * @return ?bool True if the variable fits between paths, false otherwise.
 	 */
 	public function fit(string $visibility, $firstPath, $secondPath, bool $final = false) {
 		$firstPathCall = $this -> Path -> setFullPath($firstPath) -> getParent();
@@ -131,7 +122,7 @@ class VisibilitySyntax {
 		if ($firstPathCall == $secondPathCall) { // in the same father
 			return $this -> isInterpolatableIn($visibility, $firstPath, $secondPath, $final);
 		}
-		else if ($firstPathCall != $secondPathCall){ // out of the father
+		else if ($firstPathCall != $secondPathCall) { // out of the father
 			return $this -> isInterpolatableOut($visibility);
 		}
 	}

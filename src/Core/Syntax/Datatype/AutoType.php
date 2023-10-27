@@ -3,6 +3,7 @@ namespace Novaxis\Core\Syntax\Datatype;
 
 use Novaxis\Core\Syntax\Datatype\ListType;
 use Novaxis\Core\Syntax\Datatype\NullType;
+use Novaxis\Core\Syntax\Datatype\ByteType;
 use Novaxis\Core\Syntax\Datatype\NumberType;
 use Novaxis\Core\Syntax\Datatype\StringType;
 use Novaxis\Core\Syntax\Datatype\BooleanType;
@@ -87,10 +88,10 @@ class AutoType implements TypesInterface {
 		// removing the datatypes that are between () from $this -> allTypes variable
 		$this -> allTypes = [
 			"list"    => $dataTypes['list']    ?? ListType    :: class,
-			"boolean" => $dataTypes['boolean'] ?? BooleanType :: class,
 			"null"    => $dataTypes['null']    ?? NullType    :: class,
-			"number"  => $dataTypes['number']  ?? NumberType  :: class, // Always after "boolean"
 			"byte"    => $dataTypes['byte']    ?? ByteType    :: class,
+			"number"  => $dataTypes['number']  ?? NumberType  :: class,
+			"boolean" => $dataTypes['boolean'] ?? BooleanType :: class,
 			"string"  => $dataTypes['string']  ?? StringType  :: class, // Always the last one
 		];
 

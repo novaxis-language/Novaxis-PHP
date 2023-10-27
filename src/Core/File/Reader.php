@@ -46,6 +46,7 @@ class Reader {
 		if (!file_exists($this -> filename)) {
 			throw new FileNotFoundException("The specified '{$this -> filename}' file could not be located or accessed.");
 		}
+		
 		$fileContent = file_get_contents($this -> filename);
 		$file_lines = [];
 	

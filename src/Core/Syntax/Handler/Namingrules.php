@@ -5,18 +5,18 @@ use Novaxis\Core\Error\NamingRuleException;
 
 class Namingrules {
 	/**
-     * Regular expression pattern for validating naming rules.
-     *
-     * @var string
-     */
+	 * Regular expression pattern for validating naming rules.
+	 *
+	 * @var string
+	 */
 	private string $pattern = "/^[a-zA-Z0-9_]*$/";
 
 
-    /**
-     * Regular expression pattern for fixing the input based on naming rules.
-     *
-     * @var string
-     */
+	/**
+	 * Regular expression pattern for fixing the input based on naming rules.
+	 *
+	 * @var string
+	 */
 	private string $fix_pattern = "/[^a-zA-Z0-9_]/";
 
 	/**
@@ -27,22 +27,22 @@ class Namingrules {
 	 * @return bool True if the input is valid, false otherwise.
 	 * @throws NamingRuleException If $throw is true and validation fails.
 	 */
-    public function isValid(string $input, bool $throw = false): bool {
-        $result = preg_match($this -> pattern, $input) && !empty($input);
+	public function isValid(string $input, bool $throw = false): bool {
+		$result = preg_match($this -> pattern, $input) && !empty($input);
 		
 		if ($throw && !$result) {
 			throw new NamingRuleException;
 		}
 
 		return $result;
-    }
+	}
 
 	/**
-     * Sanitize the input string based on the naming rules.
-     *
-     * @param string $input The input string to be sanitized.
-     * @return string The sanitized input string.
-     */
+	 * Sanitize the input string based on the naming rules.
+	 *
+	 * @param string $input The input string to be sanitized.
+	 * @return string The sanitized input string.
+	 */
 	public function fix(string $input) {
 		// Remove any characters that are not allowed in the naming rules
 		$cleanedInput = preg_replace($this -> fix_pattern, '', $input);

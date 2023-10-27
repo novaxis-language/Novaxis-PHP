@@ -16,7 +16,7 @@ class VariableInterpolationException extends Exception {
      * 
      * @var string
      */
-    protected $message = "Variable interpolation is not allowed due to variable visibility.";
+    protected $message = 'Variable interpolation is not allowed due to variable visibility.';
 
     /**
      * VariableInterpolationException constructor.

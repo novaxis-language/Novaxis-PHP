@@ -32,12 +32,12 @@ class VariableHandler {
 	 */
 	public function __construct() {
 		$this -> Namingrules = new Namingrules;
-
+		
 		$values = array_map(function($value) {
 			return preg_quote($value);
 		}, self::VISIBILITY_KEYWORDS);
 		
-		$this -> pattern = '/^\s*(' . join('|', array_values($values)) . ')?\s*(\S+)\s*((\?)\s*(.*?)\s*(\((\w|\W){0,}\))?)?\s*(=|:)\s*.+\s*$/i';
+		$this -> pattern = '/^\s*(' . join('|', array_values($values)) . ')?\s*([A-z0-9_]*)\s*((\?)\s*(.*?)\s*(\((\w|\W){0,}\))?)?\s*(=|:)\s*.+\s*$/i';
 	}
 
 	/**
@@ -86,7 +86,7 @@ class VariableHandler {
 		}
 		
 		return self::VISIBILITY_KEYWORDS['public'];
-	}
+	}	
 
 	/**
 	 * Get the name of a variable.
@@ -97,7 +97,7 @@ class VariableHandler {
 	 * @param bool $throw Whether to throw an exception for invalid names.
 	 * @return string|null The variable name or null if not found.
 	 */
-	function getVariableName($line, bool $throw = true) {
+	public function getVariableName($line, bool $throw = true) {
 		if (preg_match($this -> pattern, $line, $matches)) {
 			$variableName = trim($matches[2]);
 
@@ -120,7 +120,7 @@ class VariableHandler {
 	 * @return string The variable value.
 	 * @throws InvalidValueException If the value is invalid or not found.
 	 */
-	function getVariableValue($line) {
+	public function getVariableValue($line) {
 		$pattern = '/(?:\=|\:)\s*(.*?)$/';
 		
 		if (preg_match($pattern, $line, $matches)) {
@@ -142,7 +142,7 @@ class VariableHandler {
 	 * @param string $line The line to extract the variable datatype from.
 	 * @return string|null The variable datatype or null if not found.
 	 */
-	function getVariableDatatype($line) {
+	public function getVariableDatatype($line) {
 		$pattern = '/\?\s*(.*?)(?:\=|;|:|$)/';
 	
 		if (preg_match($pattern, $line, $matches)) {

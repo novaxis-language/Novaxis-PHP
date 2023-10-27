@@ -74,29 +74,29 @@ class DatatypeHandler {
 	public function createDatatype(string $datatype, mixed $value) {
 		if (strstr(strtolower($datatype), 'auto')) {
 			if (!isset($this -> allConnectedTypes['auto'])) {
-	            $this -> allConnectedTypes['auto'] = new $this -> dataTypeMap['auto']($this -> dataTypeMap);
-	        }
+				$this -> allConnectedTypes['auto'] = new $this -> dataTypeMap['auto']($this -> dataTypeMap);
+			}
 
-	        $this -> dataTypeClassConnect = $this -> allConnectedTypes['auto'];
-	        $this -> dataTypeClassConnect -> setDatatype($datatype);
-	    } else {
-	        // Check if the datatype exists in the allConnectedTypes array, if not, create a new instance
-	        if (!in_array(strtolower($datatype), array_keys($this -> dataTypeMap))) {
+			$this -> dataTypeClassConnect = $this -> allConnectedTypes['auto'];
+			$this -> dataTypeClassConnect -> setDatatype($datatype);
+		} else {
+			// Check if the datatype exists in the allConnectedTypes array, if not, create a new instance
+			if (!in_array(strtolower($datatype), array_keys($this -> dataTypeMap))) {
 				throw new InvalidDataTypeException;
 			}
 			
 			if (!isset($this -> allConnectedTypes[$datatype])) {
-	    	    $this -> allConnectedTypes[$datatype] = new $this -> dataTypeMap[strtolower($datatype)]();
-	    	}
+				$this -> allConnectedTypes[$datatype] = new $this -> dataTypeMap[strtolower($datatype)]();
+			}
 
 			$this -> dataTypeClassConnect = $this -> allConnectedTypes[$datatype];
-	    }
+		}
 
-	    // Set value and convert the datatype
-	    $this -> dataTypeClassConnect -> setValue($value);
-	    $this -> dataTypeClassConnect -> convertTo();
+		// Set value and convert the datatype
+		$this -> dataTypeClassConnect -> setValue($value);
+		$this -> dataTypeClassConnect -> convertTo();
 
-	    return $this;
+		return $this;
 	}
 
 	/**

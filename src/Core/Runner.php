@@ -39,10 +39,10 @@ class Runner {
 	private Executer $Executer;
 
 	/**
-     * An instance of the VisibilitySyntax class to handle variable's visibility.
-     *
-     * @var VisibilitySyntax
-     */
+	 * An instance of the VisibilitySyntax class to handle variable's visibility.
+	 *
+	 * @var VisibilitySyntax
+	 */
 	private VisibilitySyntax $VisibilitySyntax;
 
 	/**
@@ -68,12 +68,12 @@ class Runner {
 	}
 	
 	/**
-	 * Execute the Novaxis code stored in the file.
+	 * Execute the code.
 	 *
-	 * @return array|null An array containing the items created from the processed lines, or null if an error occurred.
-	 * @throws Exception When an exception occurs during code execution.
+	 * @return mixed An array containing the items created from the processed lines, or null if an error occurred.
+	 * @throws Exception When an eyxception occurs during code execution.
 	 */
-	public function execute() { // update the docblock
+	public function execute() {
 		$lines = $this -> Reader -> read_removed();
 		
 		$firstline = true;
@@ -81,19 +81,19 @@ class Runner {
 		
 		try {
 			foreach ($lines as $lineNumber => $line) {
-				if (empty($line)) {
+				$nextLine = next($lines);
+
+				if ($this -> Executer -> hasUnnecessaryLines($line) === true) {
 					continue;
 				}
-	
-				$nextLine = next($lines);
 				
-				$this -> Executer -> parameter($previousLine, $line, $nextLine, $firstline);
+				$value = $this -> Executer -> parameter($previousLine, $line, $nextLine, $firstline);
 				$firstline = false;
 		
 				$previousLine = $line;
 			}
 			
-			$value = $this -> Executer -> parameter($previousLine, end($lines), null, $firstline);	
+			// $value = $this -> Executer -> parameter($previousLine, end($lines), null, $firstline);	
 			
 			if (gettype($value) === 'NULL') {
 				throw new Exception(null, 0);
@@ -106,7 +106,7 @@ class Runner {
 			$e -> setLineNumber($lineNumber);
 			echo $e . PHP_EOL;
 		}
-
+		
 		catch (\TypeError $e) {
 			throw new Exception(null, $lineNumber ?? 0);
 		}

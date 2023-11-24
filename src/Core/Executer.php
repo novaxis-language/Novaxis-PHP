@@ -6,7 +6,7 @@ use Novaxis\Core\Syntax\Handler\{
 	ClassHandler,
 	CommentHandler,
 	DatatypeHandler,
-	VariableHandler,
+	VariableHandler
 };
 use Novaxis\Core\Syntax\Handler\Variable\{
 	Interpolation,
@@ -90,11 +90,21 @@ class Executer {
 	private bool $wasInListCounter = false;
 
 	/**
+     * @var array Holds information about code elements.
+     */
+	public array $ElementsLines = [];
+
+	/**
+     * @var string|null The filename associated with the code.
+     */
+	public ?string $filename;
+
+	/**
 	 * Constructor for the Executer class.
 	 *
 	 * @param Path $Path An instance of the Path class used for managing the path and navigating the nested structure of items.
 	 */
-	public function __construct(Path $Path) {
+	public function __construct(Path $Path, ?string $filename = null) {
 		$this -> Tabs = new Tabs;
 		$this -> Path = $Path;
 		$this -> ClassHandler = new ClassHandler;
@@ -105,6 +115,7 @@ class Executer {
 		$this -> listCounter = new listCounter;
 		$this -> Interpolation = new Interpolation;
 		$this -> MaximumElements = new MaximumElements;
+		$this -> filename = $filename;
 	}
 
 	/**
@@ -135,9 +146,10 @@ class Executer {
 	 * @param mixed $allVariableDetails All details of the new item to be added.
 	 * @throws NotAllowedException If adding a new item is not allowed due to maximum element limits.
 	 */
-	public function isAddingNewItemAllowed($allVariableDetails) {
+	public function isAddingNewItemAllowed($allVariableDetails, $currentLine, $oldcurrentline, int $lineNumber) {
 		if ($this -> MaximumElements -> allowed($this -> Path -> getFullPath())) {
 			$this -> Path -> addItem($allVariableDetails['name'], ucfirst($allVariableDetails['datatype']), $allVariableDetails['value'], $allVariableDetails['visibility']);
+			$this -> ElementsLines[$this -> Path -> tempForward($allVariableDetails['name'])] = array("Variable", $allVariableDetails, $currentLine, $oldcurrentline, $lineNumber);
 			$this -> MaximumElements -> loseAChance($this -> Path -> getFullPath());
 		}
 		else {
@@ -151,7 +163,7 @@ class Executer {
 	 * @param string $currentLine The current line of code to process.
 	 * @return array|null An array of items if the list counter has completed, null otherwise.
 	 */
-	public function executiveListCounter($currentLine) {
+	public function executiveListCounter($currentLine, $oldcurrentline, int $lineNumber) {
 		if ($this -> listCounterStarted['started'] == true) {
 			$this -> listCounter -> should($currentLine);
 			$this -> listCounter -> storage(trim($currentLine));
@@ -160,14 +172,14 @@ class Executer {
 				$value = $this -> listCounter -> getStorage();
 				$value = ($this -> Interpolation -> execute($value, $this -> Path -> getItems(), $this -> Path -> clean($this -> Path -> getFullPath()))) ?: $value;
 				
-				$this -> Path -> addItem($this -> listCounterStarted['name'], $this -> listCounterStarted['datatype'], $value, $this -> listCounterStarted['visibility']); // Continuous updating
+				// $this -> Path -> addItem($this -> listCounterStarted['name'], $this -> listCounterStarted['datatype'], $value, $this -> listCounterStarted['visibility']); // Continuous updating
 				
 				$this -> DatatypeHandler -> createDatatype('list', $value);
 				$value = $this -> DatatypeHandler -> getValue();
 				
 				$this -> listCounterStarted['value'] = $value;
 
-				$this -> isAddingNewItemAllowed($this -> listCounterStarted);
+				$this -> isAddingNewItemAllowed($this -> listCounterStarted, $currentLine, $oldcurrentline, $lineNumber);
 				
 				$this -> wasInListCounter = true;
 				$this -> listCounterStarted = $this -> listCounterStartedMaster;
@@ -199,17 +211,21 @@ class Executer {
 	 * @param array $values Additional values to assist in processing.
 	 * @return array|null An array of items if class handling is detected, null otherwise.
 	 */
-	public function executiveClass($currentLine, array $values) {
+	public function executiveClass($currentLine, $oldcurrentline, array $values, ?int $lineNumber = 0) {
 		$forwardClassName = null;
 		$classDatatype = null;
 
 		if ($this -> ClassHandler -> isClass($currentLine)) {
-			$tabHandlingExecuteConnection = $this -> Tabs -> execute($this -> ClassHandler, $values["tabHandling"] ?? null, $values["previousLine"] ?? null, $currentLine, $values["nextLine"] ?? null, $values["firstline"] ?? null);
+			$tabHandlingExecuteConnection = $this -> Tabs -> execute($this -> ClassHandler, $values["tabHandling"] ?? null, $values["previousLine"] ?? null, $currentLine, $values["nextLine"] ?? null, $values["firstLine"] ?? null, $values["lastLine"] ?? null);
+			if ($tabHandlingExecuteConnection === null) {
+				return $this -> Path -> getItems();
+			}
 			$forwardClassName = $tabHandlingExecuteConnection['forwardClassName'];
 			$classDatatype = $tabHandlingExecuteConnection['classDatatype'];
 			
 			if ($forwardClassName || $classDatatype) {
 				$this -> Path -> forward(trim($forwardClassName));
+				$this -> ElementsLines[$this -> Path -> getFullPath()] = array("Class", $forwardClassName, $currentLine, $oldcurrentline, $lineNumber);
 				
 				if ($classDatatype) {
 					$this -> InheritanceType -> addItem($this -> Path -> getFullPath(), $classDatatype);
@@ -248,7 +264,7 @@ class Executer {
 	 * @param array $allVariableDetails Details of the variable.
 	 * @return bool False if the list counter execution started, true otherwise.
 	 */
-	public function listCounterStartExecute($currentLine, $allVariableDetails) {
+	public function listCounterStartExecute($currentLine, $oldcurrentline, $allVariableDetails, int $lineNumber) {
 		if ($this -> listCounter -> is($allVariableDetails)) {
 			$this -> listCounterLineTabs = $this -> Tabs -> getTabCountInLine($currentLine);
 			$this -> listCounter -> should($allVariableDetails['value']);
@@ -268,6 +284,7 @@ class Executer {
 			$this -> listCounterLineTabs = 0;
 		}
 
+
 		return true;
 	}
 
@@ -277,7 +294,7 @@ class Executer {
 	 * @param string $currentLine The current line of code.
 	 * @return array|null The updated list of items, or null if no variable was found.
 	 */
-	public function executiveVariable($currentLine) {
+	public function executiveVariable($currentLine, $oldcurrentline, int $lineNumber) {
 		if ($this -> VariableHandler -> isVariable($currentLine)) {
 			$allVariableDetails = $this -> VariableHandler -> getAllVariableDetails($currentLine);
 			
@@ -286,27 +303,8 @@ class Executer {
 			
 			$allVariableDetails['value'] = ($this -> Interpolation -> execute($allVariableDetails['value'], $this -> Path -> getItems(), $this -> Path -> clean($this -> Path -> getFullPath()))) ?: $allVariableDetails['value'];
 			$allVariableDetails['datatype'] = $this -> DatatypeHandler -> datatypeInterpolation($allVariableDetails['datatype'], $this -> Path -> getItems(), $this -> Path -> getFullPath());
-			
-			if ($this -> listCounter -> is($allVariableDetails)) {
-				$this -> listCounterLineTabs = $this -> Tabs -> getTabCountInLine($currentLine);
-				$this -> listCounter -> should($allVariableDetails['value']);
 
-				if (!($this -> listCounter -> able())) {
-					$this -> listCounter -> storage($allVariableDetails['value']);
-					$this -> listCounterStarted = [
-						"started" => true,
-						"name" => $allVariableDetails['name'],
-						"datatype" => 'List',
-						"visibility" => $allVariableDetails['visibility']
-					];
-					
-					return;
-				}
-
-				$this -> listCounterLineTabs = 0;
-			}
-
-			if ($this -> listCounterStartExecute($currentLine, $allVariableDetails) === false) {
+			if ($this -> listCounterStartExecute($currentLine, $oldcurrentline, $allVariableDetails, $lineNumber) === false) {
 				return;
 			}
 
@@ -320,8 +318,7 @@ class Executer {
 				$allVariableDetails['value'] = $autoValues['value'];
 			}
 			
-			$this -> isAddingNewItemAllowed($allVariableDetails);
-
+			$this -> isAddingNewItemAllowed($allVariableDetails, $currentLine, $oldcurrentline, $lineNumber);
 			return $this -> Path -> getItems();
 		}
 	}
@@ -332,9 +329,10 @@ class Executer {
 	 * @param string $currentLine The current line of code.
 	 * @return ?array The updated list of items.
 	 */
-	public function executiveClassbox($currentLine) {
+	public function executiveClassbox($currentLine, $oldcurrentline, int $lineNumber) {
 		if ($this -> ClassHandler -> isClassBox($currentLine)) {
 			$classBox = $this -> ClassHandler -> getClassBox($currentLine);
+			$this -> ElementsLines[$this -> Path -> getFullPath() . "-classbox"] = array("Classbox", $classBox, $currentLine, $oldcurrentline, $lineNumber);
 			
 			$path = $this -> Path /* -> backward() */ -> getFullPath();
 			
@@ -354,20 +352,32 @@ class Executer {
 	 *
 	 * @param string $currentLine The current line of code.
 	 * @param array|null $values Additional values for specific code parts.
-	 * @return array An associative array containing the results of executed code parts.
+	 * @return array|null An associative array containing the results of executed code parts.
 	 */
-	public function executiveParts($currentLine, ?array $values = []) {
-		$return = [
-			"listCounter" => $this -> executiveListCounter($currentLine),
-			"variable" => $this -> executiveVariable($currentLine),
-			"classbox" => $this -> executiveClassbox($currentLine)
-		];
-		
-		if ($values) {
-			$return["class"] = $this -> executiveClass($currentLine, $values);
+	public function executiveParts($currentLine, $oldcurrentline, ?array $values = [], int $lineNumber, string $mode) {
+		if ($mode == 'listCounter') {
+			return $this -> executiveListCounter($currentLine, $oldcurrentline, $lineNumber);
+		} elseif ($mode == 'variable') {
+			return $this -> executiveVariable($currentLine, $oldcurrentline, $lineNumber);
+		} elseif ($mode == 'classbox') {
+			return $this -> executiveClassbox($currentLine, $oldcurrentline, $lineNumber);
+		} elseif ($mode == 'class') {
+			return $this -> executiveClass($currentLine, $oldcurrentline, $values, $lineNumber);
+		} else {
+			return;
 		}
 
-		return $return;
+		// $return = [
+		// 	"listCounter" => $this -> executiveListCounter($currentLine, $oldcurrentline, $lineNumber),
+		// 	"variable" => $this -> executiveVariable($currentLine, $oldcurrentline, $lineNumber),
+		// 	"classbox" => $this -> executiveClassbox($currentLine, $oldcurrentline, $lineNumber)
+		// ];
+		
+		// if ($values) {
+		// 	$return["class"] = $this -> executiveClass($currentLine, $oldcurrentline, $values, $lineNumber);
+		// }
+
+		// return $return;
 	}
 
 	/**
@@ -379,37 +389,51 @@ class Executer {
 	 * @param bool $firstline A boolean flag indicating if it's the first line of the code.
 	 * @return array|null An array containing the items created from the processed lines.
 	 */
-	public function parameter(?string $previousLine, ?string $currentLine, ?string $nextLine, $firstline = false) {
+	public function parameter(?string $previousLine, ?string $currentLine, ?string $oldcurrentline, ?string $nextLine, $firstline = false, $lastline = false, int $lineNumber) {
 		$tabHandling = $this -> Tabs -> handling($previousLine, $currentLine);
 		$currentLine = $this -> CommentHandler -> is($currentLine) ? $this -> CommentHandler -> split($currentLine) : $currentLine;
-
+		
 		if ($this -> listCounterStarted['started'] == true) {
-			return $this -> executiveParts($currentLine)['listCounter'];
+			$return = $this -> executiveParts($currentLine, $oldcurrentline, [], $lineNumber, 'listCounter');
 		}
 		
-		if ($tabHandling == 'backward' || $this -> wasInListCounter === true) {
+		if (($tabHandling == 'backward' || $this -> wasInListCounter === true) && empty($return) && $this -> listCounterStarted['started'] != true) {
 			$this -> Path -> backward($this -> Tabs -> getDifferenceNumbers($this -> wasInListCounter === false ? $this -> Tabs -> getTabCountInLine($previousLine) : $this -> listCounterLineTabs, $this -> Tabs -> getTabCountInLine($currentLine)));
 			
 			if ($this -> wasInListCounter === true) {
 				$this -> resetListCounterSettings();
 			}
 		}
-
-		if ($this -> ClassHandler -> isClass($currentLine)) {
-			return $this -> executiveParts($currentLine, [
+		
+		if ($this -> ClassHandler -> isClassBox($currentLine) && empty($return)) {
+			$return = $this -> executiveParts($currentLine, $oldcurrentline, [], $lineNumber, 'classbox');
+		}
+		
+		if ($this -> ClassHandler -> isClass($currentLine) && empty($return)) {
+			$return = $this -> executiveParts($currentLine, $oldcurrentline, [
 				"tabHandling" => $tabHandling,
 				"previousLine" => $previousLine,
 				"nextLine" => $nextLine,
-				"firstLine" => $firstline
-			])['class'];
+				"firstLine" => $firstline,
+				"lastLine" => $lastline
+			], $lineNumber, 'class');
 		}
 		
-		if ($this -> VariableHandler -> isVariable($currentLine)) {
-			return $this -> executiveParts($currentLine)['variable'];
+		if ($this -> VariableHandler -> isVariable($currentLine) && empty($return)) {
+			$return = $this -> executiveParts($currentLine, $oldcurrentline, [], $lineNumber, 'variable');
 		}
 
-		if ($this -> ClassHandler -> isClassBox($currentLine)) {
-			return $this -> executiveParts($currentLine)['classbox'];
-		}
+		return $return ?? null;
+	}
+
+	/**
+	 * Get Elements Lines
+	 *
+	 * Retrieves information about code elements.
+	 *
+	 * @return array The array containing information about code elements.
+	 */
+	public function getElementsLines() {
+		return $this -> ElementsLines;
 	}
 }

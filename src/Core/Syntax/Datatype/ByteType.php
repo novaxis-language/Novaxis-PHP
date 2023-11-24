@@ -79,7 +79,7 @@ class ByteType implements TypesInterface {
 	 * @return bool True if the value is valid, false otherwise.
 	 */
 	public function is() {
-		return preg_match("/^(((\d+(\.\d+)?)([YZEPTGMKBp]*)|0x[0-9A-Fa-f]+|0b[01]+)(\W|\s){0,}?){0,}$/", $this -> value);
+		return preg_match("/^(((\d+(\.\d+)?)([YZEPTGMKBp]{1,})|0x[0-9A-Fa-f]+|0b[01]+)(\W|\s){0,}?){0,}$/", $this -> value);
 		/* return (
 			$this -> isValidBinValue($this -> value)
 			|| $this -> isValidByteValue($this -> value)
@@ -98,12 +98,9 @@ class ByteType implements TypesInterface {
 			throw new ConversionErrorException;
 		}
 
-		$this -> value = $this -> parseByteValue($this -> value);
 		$this -> value = $this -> parseHexValue($this -> value);
 		$this -> value = $this -> parseBinValue($this -> value);
-		// if ($this -> isValidByteValue($this -> value)) {}
-		// if ($this -> isValidHexValue($this -> value)) {}
-		// if ($this -> isValidBinValue($this -> value)) {}
+		$this -> value = $this -> parseByteValue($this -> value);
 
 		if ($this -> NumberType -> isMathematicalOperation($this -> value)) {
 			$this -> value = $this -> NumberType -> calculateResult($this -> value);
@@ -119,7 +116,7 @@ class ByteType implements TypesInterface {
 	 * @return bool True if the value is valid, false otherwise.
 	 */
 	private function isValidByteValue($value) {
-		return preg_match('/^((\d+(\.\d+)?)([YZEPTGMKBp]*)(\W|\s){0,}?){0,}$/i', $value);
+		return preg_match('/^((\d+(\.\d+)?)([YZEPTGMKBp]{1,})(\W|\s){0,}?){0,}$/i', $value);
 	}
 
 	/**
@@ -181,7 +178,7 @@ class ByteType implements TypesInterface {
 	 * @return string The parsed value in bytes.
 	 */
 	private function parseByteValue($value) {
-		$value = preg_replace_callback('/(\d+(\.\d+)?)([YZEPTGMKBp]*)/i', function ($matches) {
+		$value = preg_replace_callback('/(\d+(\.\d+)?)([YZEPTGMKBp]{1,})/i', function ($matches) {
 			$numericValue = floatval($matches[1]);
 			$unit = strtoupper($matches[3]);
 	

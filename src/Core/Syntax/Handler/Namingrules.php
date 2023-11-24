@@ -11,7 +11,6 @@ class Namingrules {
 	 */
 	private string $pattern = "/^[a-zA-Z0-9_]*$/";
 
-
 	/**
 	 * Regular expression pattern for fixing the input based on naming rules.
 	 *

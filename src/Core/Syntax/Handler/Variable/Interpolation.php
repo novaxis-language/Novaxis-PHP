@@ -81,9 +81,9 @@ class Interpolation {
 	 * @param string $input The interpolated variable with braces.
 	 * @return string The interpolated variable without braces.
 	 */
-		public function removeBraces($input) {
-			return trim($input, '\\{}');
-		}
+	public function removeBraces($input) {
+		return trim($input, '\\{}');
+	}
 
 	/**
 	 * Replace interpolated variables in the input string with corresponding values from the given JSON data.
@@ -94,7 +94,7 @@ class Interpolation {
 	 * @return string The input string with all interpolated variables replaced with their values.
 	 * @throws InterpolationPathNotFoundException If the specified path does not exist in the JSON data.
 	 */
-	function replaceValue(string $input, array $jsonData, ?string $basePath = null, string $order = 'value'): string {
+	public function replaceValue(string $input, array $jsonData, ?string $basePath = null, string $order = 'value'): string {
 		$order = trim(strtolower($order));
 		if (!in_array(trim(strtolower($order)), array('value', 'datatype'))) {
 			$order = 'value';

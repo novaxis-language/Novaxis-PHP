@@ -5,24 +5,27 @@ use Novaxis\Core\Path;
 use Novaxis\Core\Executer;
 use Novaxis\Core\File\Reader;
 use Novaxis\Core\Error\Exception;
+use Novaxis\Core\Syntax\Handler\CommentHandler;
 use Novaxis\Core\Syntax\Handler\Variable\VisibilitySyntax;
 
 /**
  * The Runner class is responsible for executing the Novaxis code stored in a file.
  *
  * This class reads the Novaxis code from a file, processes it line by line, and executes
- * the commands based on the defined syntax. It uses the Executer and Path classes to
- * handle the parsing and execution of the Novaxis code.
- *
- * @package Novaxis\Core
+ * the commands based on the defined syntax. It uses the Executer and Path classes to handle the parsing and execution of the Novaxis code.
  */
 class Runner {
 	/**
 	 * The path to the Novaxis file to be executed.
 	 *
-	 * @var string
+	 * @var ?string
 	 */
-	private $filename;
+	private ?string $filename;
+
+	/**
+	 * @var string|null The source data used in the runner.
+	 */
+	private ?string $source;
 
 	/**
 	 * An instance of the Reader class for reading the Novaxis file.
@@ -46,14 +49,21 @@ class Runner {
 	private VisibilitySyntax $VisibilitySyntax;
 
 	/**
+	 * @var CommentHandler The CommentHandler instance for handling comments.
+	 */
+	private CommentHandler $CommentHandler;
+
+	/**
 	 * Runner constructor.
 	 *
 	 * @param string $filename The path to the Novaxis file to be executed.
 	 */
-	public function __construct($filename) {
+	public function __construct(?string $filename = null, ?string $source = null) {
 		$this -> filename = $filename;
-		$this -> Reader = new Reader($this -> filename);
-		$this -> Executer = new Executer(new Path);
+		$this -> source = $source;
+		$this -> Reader = new Reader($this -> filename, $this -> source);
+		$this -> Executer = new Executer(new Path, $filename);
+		$this -> CommentHandler = new CommentHandler;
 		$this -> VisibilitySyntax = new VisibilitySyntax;
 	}
 
@@ -77,17 +87,46 @@ class Runner {
 		$lines = $this -> Reader -> read_removed();
 		
 		$firstline = true;
+		$lastline = false;
 		$previousLine = null;
 		
 		try {
 			foreach ($lines as $lineNumber => $line) {
+				if ($lineNumber == count($lines)) {
+					$lastline = true;
+				}
 				$nextLine = next($lines);
+				$oldline = $line;
 
 				if ($this -> Executer -> hasUnnecessaryLines($line) === true) {
 					continue;
 				}
+
+				if ($this -> CommentHandler -> isOneMultiLine($line)) {
+					$line = $this -> CommentHandler -> removeOneMultiLine($line);
+					if (empty(trim($line))) {
+						continue;
+					}
+				}
 				
-				$value = $this -> Executer -> parameter($previousLine, $line, $nextLine, $firstline);
+				if ($this -> CommentHandler -> isMultiLineCommentClose($line)) {
+					$this -> CommentHandler -> multilineEnable = false;
+					continue;
+				}
+		
+				if ($this -> CommentHandler -> multilineEnable == true) {
+					continue;
+				}
+		
+				if ($this -> CommentHandler -> isMultiLineCommentOpen($line)) {
+					$this -> CommentHandler -> multilineEnable = true;
+					$line = $this -> CommentHandler -> removeMultiLine($line);
+					if (empty(trim($line))) {
+						continue;
+					}
+				}
+				
+				$value = $this -> Executer -> parameter($previousLine, $line, $oldline, $nextLine, $firstline, $lastline, $lineNumber);
 				$firstline = false;
 		
 				$previousLine = $line;
@@ -111,4 +150,38 @@ class Runner {
 			throw new Exception(null, $lineNumber ?? 0);
 		}
 	}
+
+	/**
+	 * Mediates between the Runner and Executer instances.
+	 *
+	 * @return Executer The Executer instance.
+	 */
+	public function MediateBetweenExecuter() {
+		return $this -> Executer;
+	}
+
+	/**
+	 * Mediates between the Runner and Executer's ElementsLines.
+	 *
+	 * @return array The ElementsLines from the Executer.
+	 */
+	public function MediateBetweenElementsLines() {
+		return $this -> Executer -> ElementsLines;
+	}
+
+	/**
+	 * Gets the filename associated with the Runner.
+	 *
+	 * @return string|null The filename.
+	 */
+	public function getFilename() {
+		return $this -> filename;
+	}
+
+	/**
+	 * Gets the source from the Runner.
+	 *
+	 * @return string|null The source.
+	 */
+	public function getSource() {}
 }

@@ -7,8 +7,6 @@ use Novaxis\Core\Syntax\Token\VariableTokens;
 
 /**
  * The VariableHandler class handles operations related to variables and their tokens.
- *
- * @package Novaxis\Core\Syntax\Handler
  */
 class VariableHandler {
 	use VariableTokens;
@@ -167,5 +165,52 @@ class VariableHandler {
 			'datatype' => $this -> getVariableDatatype($line),
 			'value' => $this -> getVariableValue($line),
 		);
+	}
+
+	/**
+     * Change the name of a variable in a line.
+     *
+     * @param string $line The line containing the variable.
+     * @param string $name The new name for the variable.
+     * @return string The line with the updated variable name.
+     */
+	public function changeVariableName($line, $name): string {
+		$oldname = $this -> getVariableName($line);
+		if ($this -> getVariableDatatype($line)) {
+			return preg_replace("/$oldname(?=\s*\?)/", $name, $line);
+		}
+		return preg_replace("/$oldname((?=.*?\:|.*?\=))/", $name, $line);
+	}
+
+	private function linePatternType($line, $name) {}
+	
+	/**
+     * Change the datatype of a variable in a line.
+     *
+     * @param string $line The line containing the variable.
+     * @param string $datatype The new datatype for the variable.
+     * @return string The line with the updated variable datatype.
+     */
+	public function changeVariableDatatype($line, $datatype): string {
+		$olddatatype = $this -> getVariableDatatype($line);
+		$pattern = "/(?<=\?).*?(?=\s*\=|\s*\:)/";
+		preg_match($pattern, $line, $matches);
+		
+		return preg_replace($pattern, str_replace(trim($olddatatype), trim($datatype), $matches[0]), $line);
+	}
+
+	/**
+     * Change the value of a variable in a line.
+     *
+     * @param string $line The line containing the variable.
+     * @param string $value The new value for the variable.
+     * @return string The line with the updated variable value.
+     */
+	public function changeVariableValue($line, $value): string {
+		$oldvalue = $this -> getVariableValue($line);
+		$pattern = "/(?<=\=|\:).*/";
+		preg_match($pattern, $line, $matches);
+
+		return preg_replace($pattern, str_replace(trim($oldvalue), trim($value), $matches[0]), $line);
 	}
 }

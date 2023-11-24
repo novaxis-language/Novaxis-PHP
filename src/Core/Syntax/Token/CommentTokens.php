@@ -15,10 +15,10 @@ trait CommentTokens {
 	/**
 	 * The multi-line comment open token.
 	 */
-	const MULTI_LINES_COMMENT_OPEN = ['/*'];
+	const MULTI_LINE_COMMENT_OPEN = ['/*'];
 
 	/**
 	 * The multi-line comment close token.
 	 */
-	const MULTI_LINES_COMMENT_CLOSE = ['*/'];
+	const MULTI_LINE_COMMENT_CLOSE = ['*/'];
 }

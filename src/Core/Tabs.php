@@ -6,8 +6,6 @@ use Novaxis\Core\Syntax\Handler\ClassHandler;
 
 /**
  * The Tabs class handles tab-related operations and tracks indentation levels in code.
- *
- * @package Novaxis\Core
  */
 class Tabs {
 	/**
@@ -116,11 +114,11 @@ class Tabs {
 	 * @param string $currentLine The current line.
 	 * @param string $nextLine The next line.
 	 * @param bool $firstline Indicates if it's the first line.
-	 * @return array An array containing class information:
+	 * @return array|void An array containing class information:
 	 *   - 'forwardClassName': The class name in forward tab handling.
 	 *   - 'classDatatype': The class datatype.
 	 */
-	public function execute(ClassHandler $classHandler, $tabHandling, $previousLine, $currentLine, $nextLine, $firstline) {
+	public function execute(ClassHandler $classHandler, $tabHandling, $previousLine, $currentLine, $nextLine, $firstline, $lastline) {
 		if (($tabHandling == 'forward' || $firstline) && $this -> handling($currentLine, $nextLine) == 'forward') {
 			$forwardClassName = $classHandler -> getClassName($currentLine);
 			$classDatatype = $classHandler -> getClassDatatype($currentLine);
@@ -135,10 +133,13 @@ class Tabs {
 			$forwardClassName = $classHandler -> getClassName($currentLine);
 			$classDatatype = $classHandler -> getClassDatatype($currentLine);
 		}
+		else if ($lastline) {
+			return;
+		}
 
 		return [
-			'forwardClassName' => $forwardClassName,
-			'classDatatype' => $classDatatype
+			'forwardClassName' => $forwardClassName ?? null,
+			'classDatatype' => $classDatatype ?? null
 		];
 	}
 }

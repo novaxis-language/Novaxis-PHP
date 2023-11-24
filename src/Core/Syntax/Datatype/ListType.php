@@ -50,7 +50,6 @@ class ListType implements TypesInterface {
 	 */
 	public function setValue($input) {
 		$this -> input = $input;
-
 		return $this;
 	}
 

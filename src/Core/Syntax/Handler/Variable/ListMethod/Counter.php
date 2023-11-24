@@ -121,7 +121,6 @@ class Counter {
 	 */
 	public function storage(string $value) {
 		$this -> value .= trim($value);
-
 		return $this;
 	}
 

@@ -10,9 +10,11 @@ use Novaxis\Core\Error\FileNotFoundException;
  */
 class Reader {
 	/**
-	 * @var string The filename of the file to read.
+	 * @var ?string The filename of the file to read.
 	 */
-	private $filename;
+	private ?string $filename;
+
+	private ?string $source;
 
 	/**
 	 * Reader constructor.
@@ -21,8 +23,9 @@ class Reader {
 	 *
 	 * @param string $filename The filename of the file to read.
 	 */
-	function __construct(string $filename){
+	function __construct(?string $filename = null, ?string $source = null){
 		$this -> filename = $filename;
+		$this -> source = $source;
 	}
 
 	/**
@@ -33,6 +36,10 @@ class Reader {
 	 * @return string|false The contents of the file as a string, or false on failure.
 	 */
 	function read(){
+		if ($this -> source) {
+			return $this -> source;
+		}
+
 		return file_get_contents($this -> filename);
 	}
 
@@ -43,11 +50,11 @@ class Reader {
 	 * @throws FileNotFoundException If the specified file does not exist or cannot be accessed.
 	 */
 	public function read_removed(): array {
-		if (!file_exists($this -> filename)) {
+		if (!file_exists($this -> filename) && empty($this -> source)) {
 			throw new FileNotFoundException("The specified '{$this -> filename}' file could not be located or accessed.");
 		}
 		
-		$fileContent = file_get_contents($this -> filename);
+		$fileContent = $this -> read();
 		$file_lines = [];
 	
 		$lines = explode(PHP_EOL, $fileContent);

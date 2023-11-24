@@ -6,8 +6,6 @@ use Novaxis\Core\Syntax\Token\VariableTokens;
 
 /**
  * Manages variable visibility styles and accessibility.
- *
- * @package Novaxis\Core\Syntax\Handler\Variable
  */
 class VisibilitySyntax {
 	use VariableTokens;

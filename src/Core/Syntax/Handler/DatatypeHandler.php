@@ -13,11 +13,8 @@ use Novaxis\Core\Syntax\Handler\Variable\Interpolation;
 
 /**
  * The DatatypeHandler class handles operations related to different data types.
- *
- * @package Novaxis\Core\Syntax\Handler
  */
 class DatatypeHandler {
-
 	/**
 	 * Map of data type names to their corresponding classes.
 	 *
@@ -73,13 +70,20 @@ class DatatypeHandler {
 	 */
 	public function createDatatype(string $datatype, mixed $value) {
 		if (strstr(strtolower($datatype), 'auto')) {
-			if (!isset($this -> allConnectedTypes['auto'])) {
-				$this -> allConnectedTypes['auto'] = new $this -> dataTypeMap['auto']($this -> dataTypeMap);
-			}
+			// if (!isset($this -> allConnectedTypes['auto'])) { }
+			$this -> allConnectedTypes['auto'] = new $this -> dataTypeMap['auto']($this -> dataTypeMap);
 
 			$this -> dataTypeClassConnect = $this -> allConnectedTypes['auto'];
 			$this -> dataTypeClassConnect -> setDatatype($datatype);
-		} else {
+		}
+		else if (strstr(strtolower($datatype), 'list')) {
+			if (!isset($this -> allConnectedTypes['list'])) {
+				$this -> allConnectedTypes['list'] = new $this -> dataTypeMap['list']();
+			}
+
+			$this -> dataTypeClassConnect = $this -> allConnectedTypes['list'];
+		}
+		else {
 			// Check if the datatype exists in the allConnectedTypes array, if not, create a new instance
 			if (!in_array(strtolower($datatype), array_keys($this -> dataTypeMap))) {
 				throw new InvalidDataTypeException;
@@ -109,7 +113,10 @@ class DatatypeHandler {
 	 * @param string $basePath The base path for resolving interpolation.
 	 * @return string The updated datatype after interpolation.
 	 */
-	public function datatypeInterpolation(string $datatype, array $jsonData, string $basePath) {
+	public function datatypeInterpolation(?string $datatype = null, array $jsonData, string $basePath) {
+		if ($datatype === null) {
+			throw new InvalidDataTypeException;
+		}
 		if ($this -> Interpolation -> hasInterpolation($datatype)) {
 			$datatype = $this -> Interpolation -> replaceValue($datatype, $jsonData, $basePath, 'datatype');
 		}

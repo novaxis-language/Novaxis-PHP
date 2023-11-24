@@ -5,8 +5,6 @@ use Novaxis\Core\Syntax\Handler\Namingrules;
 
 /**
  * The ClassHandler class handles operations related to class syntax and tokens.
- *
- * @package Novaxis\Core\Syntax\Handler
  */
 class ClassHandler {
 	/**
@@ -14,7 +12,8 @@ class ClassHandler {
 	 *
 	 * @var string
 	 */
-	private $pattern = '/^\s*([^=\s:->]+)\s*(?:\?\s*([^=:\n]*?(?:\([^)]*\))?(?:\s+[^=:\n]*?(?:\([^)]*\))?)*))?\s*(?:->\s*(\d+|(\{(\w|\W){0,}\})))?\s*$/';
+	private $pattern = '/^\s*([^=\s:->\?]+)\s*(?:\s*\?\s*([^=:\n]*?(?:\([^)]*\))?(?:\s+[^=:\n]*?(?:\([^)]*\))?)*))?\s*(?:->\s*(\d+|(\{(\w|\W){0,}\})))?\s*$/';
+	//NOTE - ([^=\s:->]+) -> ([^=\s:->\?]+)
 
 	/**
 	 * Instance of the Namingrules class for validating naming rules.
@@ -31,13 +30,14 @@ class ClassHandler {
 	}
 
 	/**
-     * Checks if the given input represents a class declaration.
-     *
-     * @param string $input The input to check.
-     * @return bool True if the input represents a class declaration, false otherwise.
-     */
+	 * Checks if the given input represents a class declaration.
+	 *
+	 * @param string $input The input to check.
+	 * @return bool True if the input represents a class declaration, false otherwise.
+	 */
 	public function isClass($input) {
-		return preg_match($this -> pattern, $input);
+		preg_match($this -> pattern, $input, $matches);
+		return isset($matches[1]) && $this -> Namingrules -> isValid($matches[1], false);
 	}
 
 	/**
@@ -83,11 +83,11 @@ class ClassHandler {
 	}
 
 	/**
-     * Extracts the datatype of the class from the given input.
-     *
-     * @param string $input The input to extract the class datatype from.
-     * @return string|null The datatype of the class, or null if not found.
-     */
+	 * Extracts the datatype of the class from the given input.
+	 *
+	 * @param string $input The input to extract the class datatype from.
+	 * @return string|null The datatype of the class, or null if not found.
+	 */
 	public function getClassDatatype($input) {
 		if (preg_match($this -> pattern, $input, $matches)) {
 			return $matches[2] ?? null;
@@ -123,5 +123,54 @@ class ClassHandler {
 		return preg_match($pattern, $line);
 	}
 
-	public function cases() {}
+	// public function cases() {}
+	
+	/**
+	 * Change the class name in the given line.
+	 *
+	 * @param string $line The input line.
+	 * @param string $name The new class name.
+	 *
+	 * @return string The modified line with the new class name.
+	 */
+	public function changeClassName(string $line, string $name): string {
+		$oldname = $this -> getClassName($line);
+		return preg_replace("/$oldname(?=(\s*\?|\s*\->))/", $name, $line);
+	}
+
+	/**
+	 * Change the class datatype in the given line.
+	 *
+	 * @param string $line The input line.
+	 * @param string $datatype The new class datatype.
+	 *
+	 * @return string The modified line with the new class datatype.
+	 */
+	public function changeClassDatatype(string $line, string $datatype): string {
+		$olddatatype = $this -> getClassDatatype($line);
+		if ($this -> hasMaximumNumber($line)) {
+			$pattern = "/(?<=\?).*?(?=\s*\-\>)/";
+		}
+		else {
+			$pattern = "/(?<=\?).*?/";
+		}
+
+		preg_match($pattern, $line, $matches);
+		return preg_replace($pattern, str_replace(trim($olddatatype), trim($datatype), $matches[0]), $line);
+	}
+
+	/**
+     * Change the classbox datatype in the given line.
+     *
+     * @param string $line The input line.
+     * @param string $datatype The new classbox datatype.
+     *
+     * @return string The modified line with the new classbox datatype.
+     */
+	public function changeClassboxDatatype(string $line, string $datatype): string {
+		$olddatatype = $this -> getClassBox($line);
+		$pattern = "/(?<=\?)(.{0,})?/";
+		preg_match($pattern, $line, $matches);
+		return preg_replace($pattern, str_replace(trim($olddatatype), trim($datatype), $matches[0]), $line);
+	}
 }

@@ -8,7 +8,7 @@ use Novaxis\Core\Syntax\Token\ClassTokens;
 /**
  * The InheritanceType class represents a data structure to handle inheritance paths and their associated datatypes.
  *
- * @package NOVAXIS\Core\Syntax\Datatype
+ * @package Novaxis\Core\Syntax\Datatype
  */
 class InheritanceType {
 	use PathTokens;

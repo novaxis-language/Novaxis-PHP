@@ -19,25 +19,11 @@ Welcome to Novaxis – a sleek and efficient programming language. Experience th
 - Execute your code with the Novaxis interpreter to see the results.
 
 ## Example code
-```PHP
-// Example Novaxis Code
 
-person
-    name ? String = John Doe
-    age ? Number = 30
-    email ? String = john.doe@example.com
-```
-```PHP
-# Example Novaxis Code
-
-person ? Auto
-    name = John Doe
-    age = 30
-    email = john.doe@example.com
-```
+![Novaxis-example-code](images/Example-code.png)
 
 ## Documentation
-For comprehensive information on Novaxis's syntax, features, and usage, refer to the [Documentation](https://github.com/novaxis-language/Novaxis-documents).
+For comprehensive information on Novaxis's syntax, features, and usage, refer to the [Documentation](https://novaxis-organization.gitbook.io/novaxis-documentation).
 
 ## Install
 ```composer require novaxis-language/novaxis```
@@ -45,13 +31,10 @@ For comprehensive information on Novaxis's syntax, features, and usage, refer to
 ## Usage
 ```PHP
 <?php
-require_once "vendor/autoload.php";
-use Novaxis\Core\Runner;
+use Novaxis\Plugins\IntegratedRunner;
 
-$novaxis = new Runner("test.novaxis");
-$execute = $novaxis -> execute();
-
-print_r($execute);
+$runner = new IntegratedRunner("Test.novaxis");
+print_r($runner -> runner());
 ```
 
 ## License

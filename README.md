@@ -20,7 +20,10 @@ Welcome to Novaxis – a sleek and efficient programming language. Experience th
 
 ## Example code
 
-![Novaxis-example-code](images/Example-code.png)
+<!-- ![Novaxis-example-code](images/Example-code.png) -->
+<div style = "text-align:center;">
+	<img src="images/Example-code.png" alt = "Novaxis-example-code" style = "width: calc(100% - 100px);text-align:center;">
+</div>
 
 ## Documentation
 For comprehensive information on Novaxis's syntax, features, and usage, refer to the [Documentation](https://novaxis-organization.gitbook.io/novaxis-documentation).
